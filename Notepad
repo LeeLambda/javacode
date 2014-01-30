@@ -1,0 +1,860 @@
+import javax.swing.*;
+import javax.swing.event.*;
+import java.lang.String.*; 
+import javax.swing.undo.*;
+import java.awt.BorderLayout;
+import java.awt.event.*;
+import java.awt.*;
+import java.io.*;
+import java.util.*;
+import java.lang.*;
+import java.awt.datatransfer.*;
+import java.text.SimpleDateFormat;  
+import javax.swing.JOptionPane;
+import java.awt.print.*; 
+
+
+public class Notepad {
+	
+	public static void main(String[] args) {		
+		FirstWindow win = new FirstWindow("");
+	}
+}
+
+class FirstWindow extends JFrame implements ActionListener, DocumentListener{	
+	JMenuBar menubar;	
+	JMenu menuFile, menuEdit, menuHelp, menuForm, menuLook;                                   //定义菜单
+	JMenuItem itemOpen, itemSave, itemExit, itemNew, itemNewSave, itemSetPage, itemPrint;     //定义文件菜单项
+	JMenuItem itemRevocation, itemCut, itemCopy, itemPaste, itemDelete, itemFind, itemFindNext, itemReplace, itemGoTo, itemSelectAll, itemDate;        //定义编辑菜单项
+	JMenuItem itemFont;             //定义格式菜单项	
+	JCheckBoxMenuItem itemWrap, itemStatusBar;
+	JMenuItem itemHelp, itemAbout;  //定义帮助菜单项
+	JTextArea textArea;             //定义文本区
+	JLabel statusBar;               //定义状态栏
+	Clipboard clipboard;            //定义剪切板对象
+	JToolBar toolBar;	             
+	UndoManager undoMgr;	        //定义撤销对象
+	String findtext2;
+	int a=0, b=0;		            //定义控制变量
+	
+	//FirstWindow的构造方法
+	FirstWindow(String s){
+		setTitle(s); 
+		setSize(500,400);
+		setLocation(250,250);
+		setVisible(true);
+		setResizable(true);
+		
+		//改变记事本窗口样式
+		try {
+			String systype= UIManager.getSystemLookAndFeelClassName();  //获得当前系统样式名称字符串。
+			UIManager.setLookAndFeel(systype);   //加载样式。
+			SwingUtilities.updateComponentTreeUI(this);    //应用给当前的窗口。
+		} 
+		catch (Exception e){			
+	
+		}
+		
+		//创建剪切板操作对象		
+		clipboard = null;		
+		clipboard = getToolkit().getSystemClipboard();//获取系统剪切板 	
+
+		//创建撤销操作对象
+		undoMgr = new UndoManager();
+		
+		//创建文本区域
+		textArea = new JTextArea();
+		
+		//创建状态栏		
+		toolBar=new JToolBar();
+		statusBar = new JLabel("状态栏");		
+		
+		//创建菜单栏
+		menubar=new JMenuBar();
+		
+		//创建菜单
+		menuFile = new JMenu("文件(F)"); //文件菜单
+		menuEdit = new JMenu("编辑(E)"); //编辑菜单
+		menuForm = new JMenu("格式(O)"); //格式菜单
+		menuLook = new JMenu("查看(V)"); //查看菜单
+		menuHelp = new JMenu("帮助(H)"); //帮助菜单
+		
+		//创建菜单项
+		itemNew = new JMenuItem("新建(N)",KeyEvent.VK_N);
+		itemOpen = new JMenuItem("打开(O)...",KeyEvent.VK_O);
+		itemSave = new JMenuItem("保存(S)",KeyEvent.VK_S);
+		itemNewSave = new JMenuItem("另存为(A)...",KeyEvent.VK_A);
+		itemSetPage = new JMenuItem("页面设置(U)...",KeyEvent.VK_U);
+		itemPrint = new JMenuItem("打印(P)...",KeyEvent.VK_P);
+		itemExit = new JMenuItem("退出(X)",KeyEvent.VK_X);
+		
+		itemRevocation = new JMenuItem("撤销(U)",KeyEvent.VK_U);
+		itemCut = new JMenuItem("剪切(T)",KeyEvent.VK_T);
+		itemCopy = new JMenuItem("复制(C)",KeyEvent.VK_C);
+		itemPaste = new JMenuItem("粘帖(P)",KeyEvent.VK_P);
+		itemDelete = new JMenuItem("删除(L)",KeyEvent.VK_L);
+		itemFind = new JMenuItem("查找(F)",KeyEvent.VK_F);
+		itemFindNext = new JMenuItem("查找下一个(N)",KeyEvent.VK_N);
+		itemReplace = new JMenuItem("替换(R)",KeyEvent.VK_R);
+		itemGoTo = new JMenuItem("转到(G)...",KeyEvent.VK_G);
+		itemSelectAll = new JMenuItem("全选(A)...",KeyEvent.VK_A);
+		itemDate = new JMenuItem("时间/日期(D)",KeyEvent.VK_D);
+		
+		itemWrap =  new JCheckBoxMenuItem("自动换行");
+		itemFont = new JMenuItem("字体(F)...",KeyEvent.VK_F);
+		
+		itemStatusBar = new JCheckBoxMenuItem("状态栏");
+		
+		itemHelp = new JMenuItem("查看帮助(H)",KeyEvent.VK_H);
+		itemAbout = new JMenuItem("关于记事本(A)",KeyEvent.VK_A);
+		
+		//禁用菜单项
+		itemSave.setEnabled(false);
+		itemNewSave.setEnabled(false);
+		itemCut.setEnabled(false);
+		itemPaste.setEnabled(false);	
+		itemRevocation.setEnabled(false);
+		itemFind.setEnabled(false);
+		itemFindNext.setEnabled(false);		
+		itemGoTo.setEnabled(false);
+		itemStatusBar.setEnabled(false);
+		
+		//设置菜单快捷键
+		menuFile.setMnemonic('F');
+		menuEdit.setMnemonic('E');
+		menuForm.setMnemonic('O');
+		menuLook.setMnemonic('V');
+		menuHelp.setMnemonic('H');		
+		
+		//设置菜单项快捷键
+		itemNew.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_MASK));
+		itemOpen.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_MASK));
+		itemSave.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_MASK));
+		itemNewSave.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_MASK));
+		itemSetPage.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_MASK));
+		itemPrint.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_MASK));	
+		
+		itemRevocation.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_MASK));	
+		itemCut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_MASK));
+		itemCopy.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_MASK));
+		itemPaste.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_MASK));	
+		itemFind.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_MASK));
+		itemFindNext.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F3,0));		
+		itemReplace.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.CTRL_MASK));
+		itemGoTo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_MASK));
+		itemSelectAll.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_MASK));
+		itemDate.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5,0));
+		
+		//为菜单项增加事件响应
+		itemNew.addActionListener(this);
+		itemOpen.addActionListener(this);
+		itemSave.addActionListener(this);
+		itemNewSave.addActionListener(this);
+		itemSetPage.addActionListener(this);
+		itemPrint.addActionListener(this);
+		itemExit.addActionListener(this);
+		
+		itemRevocation.addActionListener(this);
+		itemCut.addActionListener(this);
+		itemCopy.addActionListener(this);
+		itemPaste.addActionListener(this);
+		itemDelete.addActionListener(this);
+		itemFind.addActionListener(this);
+		itemFindNext.addActionListener(this);
+		itemReplace.addActionListener(this);
+		itemGoTo.addActionListener(this);
+		itemSelectAll.addActionListener(this);
+		itemDate.addActionListener(this);
+		
+		itemWrap.addActionListener(this);
+		itemFont.addActionListener(this);
+		
+		itemStatusBar.addActionListener(this);
+		
+		itemAbout.addActionListener(this);
+		itemHelp.addActionListener(this);
+		
+		textArea.getDocument().addUndoableEditListener(undoMgr);
+		
+		//为文件菜单增加菜单项
+		menuFile.add(itemNew);
+		menuFile.add(itemOpen);
+		menuFile.add(itemSave);
+		menuFile.add(itemNewSave);
+		menuFile.addSeparator();
+		menuFile.add(itemSetPage);
+		menuFile.add(itemPrint);
+		menuFile.addSeparator();
+		menuFile.add(itemExit);
+		
+		//为编辑菜单增加菜单项
+		menuEdit.add(itemRevocation);
+		menuEdit.addSeparator();
+		menuEdit.add(itemCut);
+		menuEdit.add(itemCopy);
+		menuEdit.add(itemPaste);
+		menuEdit.add(itemDelete);
+		menuEdit.addSeparator();
+		menuEdit.add(itemFind);
+		menuEdit.add(itemFindNext);
+		menuEdit.add(itemReplace);
+		menuEdit.add(itemGoTo);
+		menuEdit.addSeparator();
+		menuEdit.add(itemSelectAll);
+		menuEdit.add(itemDate);		
+		
+		//为格式菜单增加菜单项
+		menuForm.add(itemWrap);
+		menuForm.add(itemFont);		
+		
+		//为查看菜单增加菜单项
+		menuLook.add(itemStatusBar);
+		
+		//为帮助菜单增加菜单项
+		menuHelp.add(itemHelp);
+		menuHelp.addSeparator();
+		menuHelp.add(itemAbout);
+		
+		//将菜单增加到菜单栏中
+		menubar.add(menuFile);
+		menubar.add(menuEdit);
+		menubar.add(menuForm);
+		menubar.add(menuLook);
+		menubar.add(menuHelp);		
+		
+		//为窗口设置菜单栏
+		this.setJMenuBar(menubar);		
+
+		//添加文本区域到窗口中，并增加滚动条
+		this.add(new JScrollPane(textArea), BorderLayout.CENTER);
+		
+		//添加状态条，以JLabel作为状态条
+		this.add(statusBar, BorderLayout.SOUTH);
+		statusBar.setVisible(false);
+		
+		(textArea.getDocument()).addDocumentListener(this);					
+		
+		//设置字体
+		Font f = new Font("宋体", Font.BOLD, 16);
+		textArea.setFont(f);		
+		
+		validate();
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+	}
+	
+	public void actionPerformed(ActionEvent e){
+		Object src = e.getSource();
+		
+		//如果是菜单<新建>被按下
+		if(src == itemNew){			
+			int confirm = JOptionPane.showConfirmDialog(null, "文件已修改，要保存吗?");
+			if(confirm == JOptionPane.OK_OPTION){
+				String fileName = new String();
+			
+				JFileChooser c = new JFileChooser();
+				
+				//显示保存对话框
+				int rVal = c.showSaveDialog(this);
+				if (rVal == JFileChooser.APPROVE_OPTION) {
+					//获取文件名
+					fileName = c.getSelectedFile().getAbsolutePath();
+				
+					try{					
+						FileWriter fw = new FileWriter(fileName);
+						fw.write(textArea.getText());
+						fw.close();
+					
+						setTitle(fileName);
+					
+					}
+					catch(IOException ep){
+						JOptionPane.showConfirmDialog(this, ep.toString(), "保存文件出错", JOptionPane.YES_NO_OPTION);
+					}
+				
+				}	
+				else if(confirm == JOptionPane.CANCEL_OPTION)
+					return;
+				else if(confirm == JOptionPane.CLOSED_OPTION)
+					return;
+			}
+			textArea.setText("");
+			itemPaste.setEnabled(false);						
+		}	
+		
+		//如果是菜单<打开>被按下
+		else if(src == itemOpen){
+			String fileName;
+			JFileChooser c = new JFileChooser();
+			int rVal = c.showOpenDialog(this);
+			if (rVal == JFileChooser.APPROVE_OPTION) {
+				fileName = c.getSelectedFile().getAbsolutePath();
+				try{
+					File file = new File(fileName);
+					
+					FileInputStream fis = new FileInputStream(file);
+					
+					byte b[] = new byte[(int)file.length()];
+					fis.read(b);
+					fis.close();
+					
+					textArea.setText(new String(b));
+					
+					itemSave.setEnabled(false);
+					statusBar.setText("文本字符数：" + textArea.getText().length());
+					setTitle(fileName);
+				}
+				catch(IOException ep){
+					JOptionPane.showConfirmDialog(this, ep.toString(), "打开文件出错", JOptionPane.YES_NO_OPTION);
+				}				
+			}	
+		}
+		
+		//如果是菜单<保存>被按下
+		else if(src == itemSave) {			
+			File file = new File(getTitle());				
+			
+			if (a == 0) {
+				a = 1;
+				String fileName = new String();			
+				JFileChooser c = new JFileChooser();
+				
+				//显示保存对话框
+				int rVal = c.showSaveDialog(this);
+				if (rVal == JFileChooser.APPROVE_OPTION) {
+					//获取文件名
+					fileName = c.getSelectedFile().getAbsolutePath();
+				
+					try{
+					
+						FileWriter fw = new FileWriter(fileName);
+						fw.write(textArea.getText());
+						fw.close();
+						
+						setTitle(fileName);
+					
+					}
+					catch(IOException ep){
+						JOptionPane.showConfirmDialog(this, ep.toString(), "保存文件出错", JOptionPane.YES_NO_OPTION);
+					}				
+				}	
+			}
+			else {
+				try{ 
+					FileWriter fw=new FileWriter(file); 
+					fw.write(textArea.getText()); 
+					fw.close(); 					
+				} 
+				catch(Exception ep){ 
+					JOptionPane.showMessageDialog( null , "保存文件出错: "+ep.getMessage(), "错误 ",JOptionPane.WARNING_MESSAGE); 
+				} 
+			}				 
+		}		
+		
+		//如果是菜单<另存为>被按下
+		else if(src == itemNewSave){
+			String fileName = new String();
+			
+			JFileChooser c = new JFileChooser();
+			//显示保存对话框
+			int rVal = c.showSaveDialog(this);
+			if (rVal == JFileChooser.APPROVE_OPTION) {
+				//获取文件名
+				fileName = c.getSelectedFile().getAbsolutePath();
+				
+				try{
+					
+					FileWriter fw = new FileWriter(fileName);
+					fw.write(textArea.getText());
+					fw.close();
+					
+					setTitle(fileName);
+					
+				}
+				catch(IOException ep){
+					JOptionPane.showConfirmDialog(this, ep.toString(), "保存文件出错", JOptionPane.YES_NO_OPTION);
+				}
+				
+			}			
+		}
+		
+		//如果是菜单<页面设置>被按下
+		else if(src == itemSetPage){
+			PageFormat pf = new PageFormat();
+			PrinterJob.getPrinterJob().pageDialog(pf);			
+		}
+		
+		//如果是菜单<打印>被按下
+		else if(src == itemPrint){
+			String printStr = textArea.getText().trim();
+			
+			if(printStr != null && printStr.length() > 0){
+				PrinterJob myPrtJob = PrinterJob.getPrinterJob();
+				PageFormat pageFormat = myPrtJob.defaultPage();
+				
+				if(myPrtJob.printDialog()){
+					try{
+						myPrtJob.print();
+					}
+					catch(PrinterException pr){
+					
+					}
+				}
+			}						
+		}			
+		
+		//如果是菜单<退出>被按下
+		else if(src == itemExit){
+			this.dispose();
+		}
+
+		//设置自动换行
+		else if(src == itemWrap){
+			textArea.setLineWrap(! textArea.getLineWrap() );
+		}	
+		
+		//设置状态栏
+		else if(src == itemStatusBar){
+			statusBar.setVisible(!statusBar.isVisible());
+		}		
+
+		//如果是菜单<关于>被按下
+		else if(src == itemAbout){
+			JOptionPane.showMessageDialog(this, "版权所有(c)李婉玉", "About", JOptionPane.DEFAULT_OPTION);
+		}
+			
+		//如果是菜单<撤销>被按下
+		else if(src == itemRevocation){			
+			undoMgr.undo();
+		}	
+		
+		//如果是菜单<复制>被按下
+		else if(src == itemCopy){
+			String s = textArea.getSelectedText();//复制到剪切板 
+			StringSelection text1= new StringSelection(s);//拖动鼠标选取文本 
+			clipboard.setContents(text1, null); 
+		}
+		
+		//如果是菜单<剪切>被按下
+		else if(src == itemCut){
+			String s1 = textArea.getSelectedText();//剪切到剪切板 
+			StringSelection text1 = new StringSelection(s1);//拖动鼠标选取文本 
+			clipboard.setContents(text1, null); 
+			int j = textArea.getSelectionStart(); 
+			int k = textArea.getSelectionEnd(); 
+			textArea.replaceRange("", j, k);//从Text中删除被选取文本 
+		}		
+			
+		//如果是菜单<粘贴>被按下
+		else if(src == itemPaste){
+			Transferable transferable = clipboard.getContents(this); 
+			DataFlavor dataflavor = DataFlavor.stringFlavor; 
+			if(transferable.isDataFlavorSupported(dataflavor)){ 
+				try{//处理异常事件的发生（类型不符合）  
+					String s3 = (String)transferable.getTransferData(dataflavor); 
+					textArea.insert(s3, textArea.getCaretPosition()); 
+				} 
+				catch(Exception e1){ } 
+			} 
+		} 
+		
+		//如果是菜单<删除>被按下
+		else if(src == itemDelete){
+			textArea.replaceRange("",textArea.getSelectionStart(),textArea.getSelectionEnd());
+		}
+		
+		//如果是菜单<全选>被按下
+		else if(src == itemSelectAll){
+			textArea.selectAll();			
+		}
+		
+		//如果是菜单<时间/日期>被按下
+		else if(src == itemDate){
+			Date nowdate;//定义一个时间对象
+			SimpleDateFormat dateformat;			
+			
+			nowdate = new Date(); 			
+			dateformat = new SimpleDateFormat("HH:mm yyyy/MM/dd"); 
+			
+			this.textArea.append(dateformat.format(nowdate)); 
+		}
+		
+		//如果是菜单<查找>被按下
+		else if(src ==  itemFind){
+			final JDialog dialog = new JDialog(this,"查找",true); 			
+			JLabel find = new JLabel("查找内容:"); 
+			final JTextField findtext = new JTextField(1); 
+			JButton jbu = new JButton("向上查找上一个"); 
+			JButton jbd = new JButton("向下查找下一个"); 
+			JButton jbe = new JButton("取消"); 
+			
+			b=1;
+			
+			dialog.setLayout(null); 
+			
+			dialog.setBounds(560,250,310,170); 
+			
+			find.setBounds(10,30,90,20); 
+			findtext.setBounds(100,30,90,20); 
+			jbu.setBounds(200,30,80,20);
+			jbd.setBounds(200,60,80,20);
+			jbe.setBounds(200,90,80,20);			
+			
+			dialog.add(find); 
+			dialog.add(findtext); 
+			dialog.add(jbu);
+			dialog.add(jbd);
+			dialog.add(jbe);						
+			
+			jbd.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){
+					String text = textArea.getText(); 
+					String str = findtext.getText();
+					findtext2 = findtext.getText();						
+					int end = text.length(); 
+					int len = str.length(); 
+					int start = textArea.getSelectionEnd(); 
+					
+					if(start == end){ start = 0; } 
+					
+					for(;start<=end-len;start++){ 
+						if(text.substring(start,start+len).equals(str)){ 
+							textArea.setSelectionStart(start);
+							textArea.setSelectionEnd(start+len); 
+							return; 
+						} 
+					} 
+					//若找不到待查字符串，则将光标置于末尾 
+					textArea.setSelectionStart(end); 
+					textArea.setSelectionEnd(end); 
+				} 
+			});			
+			
+			jbe.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){						
+					dialog.dispose(); 
+				}				
+			});			
+			
+			dialog.addWindowListener(new WindowAdapter(){ 
+				public void windowClosing(WindowEvent e){ 
+					dialog.dispose(); 
+				} 
+			}); 
+			
+			
+			dialog.setResizable(false);  //不改变对话框大小
+			dialog.setVisible(true);     //显示对话框
+			
+		}
+		
+		//如果菜单<查找下一个>被按下
+		else if(src == itemFindNext){			
+			if(b == 0){
+				final JDialog dialog = new JDialog(this,"查找",true); 			
+				JLabel find = new JLabel("查找内容:"); 
+				final JTextField findtext = new JTextField(1); 
+				JButton jbu = new JButton("向上查找上一个"); 
+				JButton jbd = new JButton("向下查找下一个"); 
+				JButton jbe = new JButton("取消"); 
+			
+				b=1;
+				
+				dialog.setLayout(null); 
+			
+				dialog.setBounds(560,250,310,170); 
+			
+				find.setBounds(10,30,90,20); 
+				findtext.setBounds(100,30,90,20); 
+				jbu.setBounds(200,30,80,20);
+				jbd.setBounds(200,60,80,20);
+				jbe.setBounds(200,90,80,20);			
+			
+				dialog.add(find); 
+				dialog.add(findtext); 
+				dialog.add(jbu);
+				dialog.add(jbd);
+				dialog.add(jbe);						
+			
+				jbd.addActionListener(new ActionListener(){ 
+					public void actionPerformed(ActionEvent e){
+						String text = textArea.getText(); 
+						String str = findtext.getText();
+						findtext2 = findtext.getText();						
+						int end = text.length(); 
+						int len = str.length(); 
+						int start = textArea.getSelectionEnd(); 
+						if(start == end){ start = 0; } 
+						for(;start<=end-len;start++){ 
+							if(text.substring(start,start+len).equals(str)){ 
+								textArea.setSelectionStart(start);
+								textArea.setSelectionEnd(start+len); 
+								return; 
+							} 
+						} 
+						//若找不到待查字符串，则将光标置于末尾 
+						textArea.setSelectionStart(end); 
+						textArea.setSelectionEnd(end); 
+					} 
+				});				
+			
+				jbe.addActionListener(new ActionListener(){ 
+					public void actionPerformed(ActionEvent e){						
+						dialog.dispose(); 
+					}				
+				});			
+			
+				dialog.addWindowListener(new WindowAdapter(){ 
+					public void windowClosing(WindowEvent e){ 
+						dialog.dispose(); 
+					} 
+				}); 			
+			
+				dialog.setResizable(false);  //不改变对话框大小
+				dialog.setVisible(true);     //显示对话框
+			}
+			else{
+				String text = textArea.getText();
+				String str = findtext2;
+			
+				int end = text.length(); 
+				int len = str.length(); 
+				int start = textArea.getSelectionEnd(); 
+				if(start == end){ start = 0; } 
+				for(;start<=end-len;start++){ 
+					if(text.substring(start,start+len).equals(str)){ 
+						textArea.setSelectionStart(start);
+						textArea.setSelectionEnd(start+len); 
+						return; 
+					} 
+				} 
+				//若找不到待查字符串，则将光标置于末尾 
+				textArea.setSelectionStart(end); 
+				textArea.setSelectionEnd(end); 
+			}
+		}
+			
+		//如果菜单<替换>被按下
+		else if(src == itemReplace){
+			final JDialog dialogr = new JDialog(this,"替换",true);			
+			
+			JLabel find = new JLabel("查找内容:");
+			JLabel replace = new JLabel("替换为:");
+			
+			final JTextField findtext = new JTextField(1); 
+			final JTextField replacetext = new JTextField(1); 
+			
+			JButton jbu = new JButton("查找下一个"); 
+			JButton jbr = new JButton("替换"); 
+			JButton jbar = new JButton("全部替换"); 
+			JButton jbe = new JButton("取消"); 
+			
+			dialogr.setLayout(null); 
+			
+			dialogr.setBounds(560,300,310,200); 			
+			find.setBounds(10,30,90,20);
+			replace.setBounds(10,60,90,20);
+			findtext.setBounds(100,30,90,20); 
+			replacetext.setBounds(100,60,90,20);
+			jbu.setBounds(200,30,80,20);
+			jbr.setBounds(200,60,80,20);
+			jbar.setBounds(200,90,80,20);
+			jbe.setBounds(200,130,80,20);
+			
+			dialogr.add(find); 
+			dialogr.add(replace); 
+			dialogr.add(findtext);
+			dialogr.add(replacetext); 			
+			dialogr.add(jbu);
+			dialogr.add(jbr);
+			dialogr.add(jbar);
+			dialogr.add(jbe);		 
+			
+			jbu.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){ 
+					String text = textArea.getText(); 
+					String str = findtext.getText();
+					int end = text.length(); 
+					int len = str.length(); 
+					int start = textArea.getSelectionEnd(); 
+					
+					if(start == end){ 
+						start = 0; 
+					}
+					
+					for( ; start<=end-len ; start++ ){ 
+						if(text.substring(start,start+len).equals(str)){ 
+							textArea.setSelectionStart(start);
+							textArea.setSelectionEnd(start+len); 
+							return; 
+						} 
+					} 
+					//若找不到待查字符串，则将光标置于末尾 
+					textArea.setSelectionStart(end); 
+					textArea.setSelectionEnd(end); 
+				} 
+			}); 
+			
+			jbr.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){ 
+					String text = findtext.getText();
+					String texta = textArea.getText();
+					String str = replacetext.getText();
+					int end = text.length(); 
+					int len = str.length();
+					int start = textArea.getSelectionEnd(); 
+					
+					if(start == end){
+						start = 0;
+					}					
+					
+					texta=texta.replace(text,str);	//找到要替换的文本替换为			
+					textArea.setText(texta);     
+				}				
+			});
+			
+			jbar.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){									
+					String str = replacetext.getText();
+					String text = findtext.getText();
+					int end = text.length(); 
+					int len = str.length();
+					int start = textArea.getSelectionEnd(); 
+					
+					if(start == end){
+						start = 0;
+					}					
+					
+					textArea.setText(str);
+				}				
+			});
+			
+			jbe.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){						
+					dialogr.dispose(); 
+				}				
+			});
+					
+			dialogr.addWindowListener(new WindowAdapter(){ 
+				public void windowClosing(WindowEvent e){ 
+				dialogr.dispose(); 
+				} 
+			}); 
+
+			dialogr.setResizable(false); 
+			dialogr.setVisible(true);
+		}
+
+		//如果菜单<转到>被按下
+		else if(src == itemGoTo){			
+			final JDialog dialog = new JDialog(this,"转到",true); 			
+			JLabel find = new JLabel("转到:"); 
+			final JTextField gototext = new JTextField(1); 
+			JButton jbu = new JButton("转到"); 			
+			JButton jbe = new JButton("取消"); 
+			
+			dialog.setLayout(null); 
+			
+			dialog.setBounds(560,250,310,150); 
+			
+			find.setBounds(10,30,90,20); 
+			gototext.setBounds(100,30,90,20); 
+			jbu.setBounds(200,30,80,20);
+			jbe.setBounds(200,60,80,20);					
+			
+			dialog.add(find); 
+			dialog.add(gototext); 
+			dialog.add(jbu);			
+			dialog.add(jbe);		
+			
+			jbu.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){ 
+					try{  
+						int i=0,j=1;  
+						char ch[];  
+						int raw = Integer.parseInt(gototext.getText());//得到文本框中的文本  
+						String s = textArea.getText();  
+						ch = new char[s.length()];  
+				
+						s.getChars(0,s.length()-1,ch,0);  
+              
+						while(j < raw){  
+							i++;  
+							if(ch[i] == '\n'){
+								j++;
+							}  
+							if(i == s.length())
+							break;  
+						}  
+				
+						if(raw == 1) //转到第一行  
+							textArea.setCaretPosition(0);  
+						else   
+							textArea.setCaretPosition(i+1);//转到指定行  
+				
+						dialog.setVisible(false);  
+					}  
+					catch(Exception a){  
+						JOptionPane.showMessageDialog(dialog,"你输入的位置不对无法到达！","记事本",JOptionPane.WARNING_MESSAGE);  
+					}     
+				}
+			});
+			
+			jbe.addActionListener(new ActionListener(){ 
+				public void actionPerformed(ActionEvent e){						
+					dialog.dispose(); 
+				}				
+			});	
+
+			dialog.setResizable(false);  //不改变对话框大小
+			dialog.setVisible(true);     //显示对话框			
+		}
+		
+		//如果菜单<查看帮助>被按下
+		else if(src == itemHelp){
+			String message = "1、本记事本历经种种磨难还是没能完全完成，功能不全\n"
+						+"2、本记事本使用方法与Windows自带记事本相同\n"
+						+"3、本记事本没有实现向上查找功能和字体功能\n"
+						+"4、本记事本的窗口界面与系统相同，此为额外实现的功能\n"
+						+"5、记事本的不美观和别的不足之处请使用者见谅O.O\n";
+			JOptionPane.showMessageDialog(this,message,"查看帮助",JOptionPane.PLAIN_MESSAGE);
+		}
+			
+	}	
+	
+	//文本区更新
+	public void changedUpdate(DocumentEvent e)
+	{
+		statusBar.setText("文本字符数：" + textArea.getText().length());
+		//如文本区进行了更改，则运行保存
+		itemSave.setEnabled(true);
+		itemNewSave.setEnabled(true);
+		itemCut.setEnabled(true);
+		itemPaste.setEnabled(true);	
+		itemRevocation.setEnabled(true);
+		itemFind.setEnabled(true);
+		itemFindNext.setEnabled(true);		
+		itemGoTo.setEnabled(true);
+		itemStatusBar.setEnabled(true);
+	}
+	
+	//文本区删除字符
+	public void removeUpdate(DocumentEvent e)
+	{
+		changedUpdate(e);
+	}
+	
+	//文本区增加字符
+	public void insertUpdate(DocumentEvent e)
+	{
+		changedUpdate(e);
+	}
+	
+	//重载setTitle函数
+	public void setTitle(String s){
+		if(s=="")
+			super.setTitle("记事本");
+		else
+			super.setTitle(s+" - 记事本");
+	}
+	
+}   
